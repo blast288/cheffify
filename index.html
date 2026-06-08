@@ -274,12 +274,12 @@ textarea::placeholder{color:var(--text3);}
   <div class="mode-notice" id="mode-notice">ℹ️ …</div>
   <div id="photo-block">
     <div class="section-lbl" id="lbl-step1">Stap 1 — Foto van het gerecht</div>
-    <div class="upload-zone" id="zone-dish" onclick="document.getElementById('inp-dish').click()">
-      <input type="file" id="inp-dish" accept="image/*" capture="environment" onchange="handleImg(this,'prev-dish','dish')">
+    <label class="upload-zone" id="zone-dish" for="inp-dish">
+      <input type="file" id="inp-dish" accept="image/*" onchange="handleImg(this,'prev-dish','dish')" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
       <div class="uz-icon">📸</div>
       <div class="uz-title" id="uz-dish-t">Tik om foto te maken</div>
-      <div class="uz-sub" id="uz-dish-s">of kies uit galerij</div>
-    </div>
+      <div class="uz-sub" id="uz-dish-s">Kies foto of maak er een</div>
+    </label>
     <img id="prev-dish" class="preview-img" alt="">
   </div>
   <div id="ing-block">
@@ -290,12 +290,12 @@ textarea::placeholder{color:var(--text3);}
       <button class="btn btn-sm btn-ghost" id="tab-text-btn" onclick="switchIngTab('text')">📋 Plakken</button>
     </div>
     <div id="ing-tab-photo">
-      <div class="upload-zone" id="zone-ing" onclick="document.getElementById('inp-ing').click()">
-        <input type="file" id="inp-ing" accept="image/*" capture="environment" onchange="handleImg(this,'prev-ing','ing')">
+      <label class="upload-zone" id="zone-ing" for="inp-ing">
+        <input type="file" id="inp-ing" accept="image/*" onchange="handleImg(this,'prev-ing','ing')" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
         <div class="uz-icon">🏷️</div>
         <div class="uz-title" id="uz-ing-t">Foto van verpakking</div>
-        <div class="uz-sub" id="uz-ing-s">Achterkant met ingrediënten</div>
-      </div>
+        <div class="uz-sub" id="uz-ing-s">Kies foto of maak er een</div>
+      </label>
       <img id="prev-ing" class="preview-img" alt="">
     </div>
     <div id="ing-tab-manual" style="display:none;">
@@ -621,9 +621,11 @@ function showRemoveBtn(previewId,type){
 function removeImg(previewId,type){
   const prev=document.getElementById(previewId);
   prev.src='';prev.style.display='none';
-  if(type==='dish'){dishB64=null;document.getElementById('inp-dish').value='';}
-  else{ingB64=null;document.getElementById('inp-ing').value='';}
-  // Show upload zone again
+  const inputId=type==='dish'?'inp-dish':'inp-ing';
+  const inp=document.getElementById(inputId);
+  if(inp){inp.value='';}  // Reset so same file can be chosen again
+  if(type==='dish')dishB64=null;
+  else ingB64=null;
   const zoneId=type==='dish'?'zone-dish':'zone-ing';
   const zone=document.getElementById(zoneId);
   if(zone)zone.style.display='block';
