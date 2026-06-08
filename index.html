@@ -274,7 +274,7 @@ textarea::placeholder{color:var(--text3);}
   <div class="mode-notice" id="mode-notice">ℹ️ …</div>
   <div id="photo-block">
     <div class="section-lbl" id="lbl-step1">Stap 1 — Foto van het gerecht</div>
-    <div class="upload-zone" onclick="document.getElementById('inp-dish').click()">
+    <div class="upload-zone" id="zone-dish" onclick="document.getElementById('inp-dish').click()">
       <input type="file" id="inp-dish" accept="image/*" capture="environment" onchange="handleImg(this,'prev-dish','dish')">
       <div class="uz-icon">📸</div>
       <div class="uz-title" id="uz-dish-t">Tik om foto te maken</div>
@@ -290,7 +290,7 @@ textarea::placeholder{color:var(--text3);}
       <button class="btn btn-sm btn-ghost" id="tab-text-btn" onclick="switchIngTab('text')">📋 Plakken</button>
     </div>
     <div id="ing-tab-photo">
-      <div class="upload-zone" onclick="document.getElementById('inp-ing').click()">
+      <div class="upload-zone" id="zone-ing" onclick="document.getElementById('inp-ing').click()">
         <input type="file" id="inp-ing" accept="image/*" capture="environment" onchange="handleImg(this,'prev-ing','ing')">
         <div class="uz-icon">🏷️</div>
         <div class="uz-title" id="uz-ing-t">Foto van verpakking</div>
@@ -585,7 +585,6 @@ function handleImg(input,previewId,type){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
-    // Resize image to max 1024px and compress to reduce payload size
     const img=new Image();
     img.onload=()=>{
       const MAX=1024;
@@ -594,15 +593,43 @@ function handleImg(input,previewId,type){
       const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
       const compressed=canvas.toDataURL('image/jpeg',0.75);
-      const prev=document.getElementById(previewId);prev.src=compressed;prev.style.display='block';
+      const prev=document.getElementById(previewId);
+      prev.src=compressed;prev.style.display='block';
       const b64=compressed.split(',')[1];
       if(type==='dish')dishB64=b64;else ingB64=b64;
       updateProgress(type==='dish'?2:3);
-      console.log('Image resized to',w+'x'+h,'~',Math.round(b64.length/1024)+'KB');
+      // Show remove button
+      showRemoveBtn(previewId,type);
     };
     img.src=e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function showRemoveBtn(previewId,type){
+  const existingBtn=document.getElementById('remove-'+previewId);
+  if(existingBtn)existingBtn.remove();
+  const prev=document.getElementById(previewId);
+  const btn=document.createElement('button');
+  btn.id='remove-'+previewId;
+  btn.textContent='✕ Foto verwijderen';
+  btn.style.cssText='display:block;width:100%;margin-bottom:12px;padding:9px;background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.25);border-radius:var(--rm);color:var(--red);font-family:Outfit,sans-serif;font-size:.82rem;cursor:pointer;';
+  btn.onclick=()=>removeImg(previewId,type);
+  prev.insertAdjacentElement('afterend',btn);
+}
+
+function removeImg(previewId,type){
+  const prev=document.getElementById(previewId);
+  prev.src='';prev.style.display='none';
+  if(type==='dish'){dishB64=null;document.getElementById('inp-dish').value='';}
+  else{ingB64=null;document.getElementById('inp-ing').value='';}
+  // Show upload zone again
+  const zoneId=type==='dish'?'zone-dish':'zone-ing';
+  const zone=document.getElementById(zoneId);
+  if(zone)zone.style.display='block';
+  const btn=document.getElementById('remove-'+previewId);
+  if(btn)btn.remove();
+  updateProgress(1);
 }
 function switchIngTab(tab){
   currentIngTab=tab;
