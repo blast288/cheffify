@@ -375,7 +375,15 @@ textarea::placeholder{color:var(--text3);}
     <button onclick="toggleKeyVisibility()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text3);" id="eye-btn">👁️</button>
   </div>
   <div id="key-status" style="font-size:.78rem;margin-bottom:14px;min-height:18px;color:var(--accent);"></div>
-  <button class="btn btn-green" onclick="saveApiKey()">✓ Sleutel opslaan</button>
+
+  <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);">
+    <div class="section-lbl">Vercel Proxy URL</div>
+    <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px;line-height:1.5;">Vul hier je eigen Vercel proxy-URL in (zie instructies). Zonder dit werkt de app niet.</p>
+    <input type="text" id="proxy-url-input" placeholder="https://jouw-naam.vercel.app/api/recipe" style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rm);padding:13px 14px;font-family:'Outfit',sans-serif;font-size:.82rem;color:var(--text);outline:none;margin-bottom:8px;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+    <div id="proxy-status" style="font-size:.78rem;margin-bottom:12px;min-height:16px;color:var(--accent);"></div>
+  </div>
+
+  <button class="btn btn-green" onclick="saveApiKey()">✓ Opslaan</button>
   <button class="btn btn-ghost" onclick="showScreen('home')">← Terug</button>
   <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--border);">
     <div class="section-lbl">Over Cheffify</div>
@@ -655,8 +663,9 @@ Respond ONLY with valid JSON (no markdown, no backticks):
     parts.push({type:'text',text:prompt});
     const apiKey=localStorage.getItem('cheffify_apikey')||'';
     if(!apiKey){clearInterval(iv);loadEl.style.display='none';showScreen('settings');alert('Voer eerst je Anthropic API-sleutel in via Instellingen (⚙️).');return;}
-    console.log('Cheffify: calling API...');
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:parts}]})});
+    console.log('Cheffify: calling API via proxy...');
+    const proxyUrl = localStorage.getItem('cheffify_proxy') || 'https://JOUW-NAAM.vercel.app/api/recipe';
+    const res=await fetch(proxyUrl,{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:parts}]})});
     console.log('Cheffify: response status',res.status);
     if(!res.ok){
       const errBody=await res.text();
@@ -1007,8 +1016,17 @@ function saveApiKey(){
   const val=document.getElementById('api-key-input').value.trim();
   if(!val.startsWith('sk-')){document.getElementById('key-status').style.color='var(--red)';document.getElementById('key-status').textContent='⚠️ Sleutel lijkt niet geldig (moet beginnen met sk-)';return;}
   localStorage.setItem('cheffify_apikey',val);
+  const proxyVal=document.getElementById('proxy-url-input')?.value.trim();
+  if(proxyVal&&proxyVal.startsWith('https://')){
+    localStorage.setItem('cheffify_proxy',proxyVal);
+    document.getElementById('proxy-status').textContent='✅ Proxy URL opgeslagen!';
+  } else if(proxyVal){
+    document.getElementById('proxy-status').style.color='var(--red)';
+    document.getElementById('proxy-status').textContent='⚠️ URL moet beginnen met https://';
+    return;
+  }
   document.getElementById('key-status').style.color='var(--accent)';
-  document.getElementById('key-status').textContent='✅ Sleutel opgeslagen! Je kunt nu recepten genereren.';
+  document.getElementById('key-status').textContent='✅ Instellingen opgeslagen!';
   setTimeout(()=>showScreen('home'),1500);
 }
 function toggleKeyVisibility(){
@@ -1017,12 +1035,23 @@ function toggleKeyVisibility(){
 }
 function checkApiKeyOnStart(){
   const key=localStorage.getItem('cheffify_apikey')||'';
+  const proxy=localStorage.getItem('cheffify_proxy')||'';
   if(key)document.getElementById('api-key-input').value=key;
-  // show key status indicator in topbar if set
+  if(proxy){const pi=document.getElementById('proxy-url-input');if(pi)pi.value=proxy;}
+  const ready=key&&proxy;
   const indicator=document.createElement('div');
-  indicator.style.cssText='width:8px;height:8px;border-radius:50%;background:'+(key?'var(--accent)':'var(--red)')+';flex-shrink:0;';
-  indicator.title=key?'API sleutel ingesteld':'Geen API sleutel';
+  indicator.style.cssText='width:8px;height:8px;border-radius:50%;background:'+(ready?'var(--accent)':'var(--red)')+';flex-shrink:0;cursor:pointer;';
+  indicator.title=ready?'Klaar om te koken!':'Instellingen vereist — tik om in te stellen';
+  indicator.onclick=()=>showScreen('settings');
   document.querySelector('.topbar-right')?.prepend(indicator);
+  if(!ready){
+    // show a banner if not configured yet
+    const banner=document.createElement('div');
+    banner.style.cssText='background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.25);border-radius:var(--rm);padding:11px 14px;font-size:.82rem;color:var(--red);margin:0 16px 14px;line-height:1.5;cursor:pointer;';
+    banner.innerHTML='⚙️ <strong>Nog niet ingesteld:</strong> Voer je API-sleutel en Vercel proxy-URL in om te beginnen.';
+    banner.onclick=()=>showScreen('settings');
+    document.getElementById('screen-home')?.prepend(banner);
+  }
 }
 
 // ════════════════════════════
