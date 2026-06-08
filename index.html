@@ -302,7 +302,7 @@ textarea::placeholder{color:var(--text3);}
       <div class="tag-area" onclick="document.getElementById('tag-input').focus()">
         <input class="tag-input" id="tag-input" placeholder="Typ ingredient + Enter..." onkeydown="handleTagKey(event)">
       </div>
-      <div class="tag-hint" id="tag-hint-txt">Druk Enter of komma na elk ingredient</div>
+      <div class="tag-hint" id="tag-hint-txt">Typ ingredient → druk Enter of komma om toe te voegen</div>
     </div>
     <div id="ing-tab-text" style="display:none;">
       <textarea id="ing-textarea" placeholder="Plak hier de ingrediëntenlijst..." style="margin-bottom:10px;"></textarea>
@@ -457,7 +457,7 @@ const T={
     btnStart:'🚀 Begin met scannen',btnBook:'📖 Receptenboek',
     lbl1:'Stap 1 — Foto van het gerecht',lbl2:'Stap 2 — Ingrediëntenlijst',lblExtra:'Extra info (optioneel)',
     uzDishT:'Tik om foto te maken',uzDishS:'of kies uit galerij',uzIngT:'Foto van verpakking',uzIngS:'Achterkant met ingrediënten',
-    tagHint:'Druk Enter of komma na elk ingredient',
+    tagHint:'Typ ingredient → druk Enter of komma om toe te voegen',
     btnGen:'✨ Genereer recept',btnBack:'← Terug',btnSave:'📖 Voeg toe aan receptenboek',btnNew:'+ Nieuw recept',
     lbl3:'Ingrediënten',lbl4:'Bereiding',lblNutr:'Voedingswaarden per portie',lblTip:"Chef's Tip",lblAlts:'Gezondere tips',lblPortion:'Porties',
     nlHome:'Home',nlScan:'Scan',nlBook:'Receptenboek',lblHist:'Opgeslagen recepten',
@@ -640,8 +640,14 @@ function switchIngTab(tab){
   });
 }
 function handleTagKey(e){
-  if(e.key==='Enter'||e.key===','){
-    e.preventDefault();const val=e.target.value.trim().replace(/,$/,'');
+  if(e.key==='Enter'){
+    e.preventDefault();
+    const val=e.target.value.trim().replace(/,$/,'');
+    if(val){addTag(val);e.target.value='';}
+  } else if(e.key===','){
+    // On comma: add tag immediately without showing the comma
+    e.preventDefault();
+    const val=e.target.value.trim();
     if(val){addTag(val);e.target.value='';}
   }
 }
