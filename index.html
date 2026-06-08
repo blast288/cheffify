@@ -762,7 +762,7 @@ function renderRecipe(r,portions){
     <div class="chips">
       <div class="chip">⏱️ ${r.bereidingstijd}</div>
       <div class="chip">📊 ${r.moeilijkheid}</div>
-      ${nv.kcal?`<div class="chip green">🔥 ${Math.round(nv.kcal*scale)} kcal</div>`:''}
+      ${nv.kcal?`<div class="chip green">🔥 ${Math.round(nv.kcal)} kcal/portie</div>`:''}
       ${score?`<div class="chip amber">⭐ ${score}/10</div>`:''}
     </div>
   </div>
@@ -779,14 +779,18 @@ function renderRecipe(r,portions){
   </div>
   ${nv.kcal?`<div class="nutr-card">
     <h3>🔥 ${L.lblNutr}</h3>
-    <div class="kcal-big"><div class="kcal-num" id="nv-kcal">${Math.round((nv.kcal||0)*scale)}</div><div class="kcal-lbl">kcal</div></div>
+    <div class="kcal-big">
+      <div class="kcal-num" id="nv-kcal">${Math.round(nv.kcal||0)}</div>
+      <div class="kcal-lbl">kcal per portie</div>
+      <div style="font-size:.75rem;color:rgba(168,224,99,.6);margin-top:4px;" id="nv-kcal-total">Totaal ${portions} porties: ${Math.round((nv.kcal||0)*portions)} kcal</div>
+    </div>
     <div class="nutr-grid">
-      <div class="ng-box"><span class="ng-val" id="nv-prot">${r1((nv.eiwitten_g||0)*scale)}g</span><span class="ng-lbl">Eiwitten</span></div>
-      <div class="ng-box"><span class="ng-val" id="nv-kh">${r1((nv.koolhydraten_g||0)*scale)}g</span><span class="ng-lbl">Koolhyd.</span></div>
-      <div class="ng-box"><span class="ng-val" id="nv-vet">${r1((nv.vetten_g||0)*scale)}g</span><span class="ng-lbl">Vetten</span></div>
-      <div class="ng-box"><span class="ng-val" id="nv-vez">${r1((nv.vezels_g||0)*scale)}g</span><span class="ng-lbl">Vezels</span></div>
-      <div class="ng-box"><span class="ng-val" id="nv-sui">${r1((nv.suiker_g||0)*scale)}g</span><span class="ng-lbl">Suiker</span></div>
-      <div class="ng-box"><span class="ng-val" id="nv-zout">${r1((nv.zout_g||0)*scale)}g</span><span class="ng-lbl">Zout</span></div>
+      <div class="ng-box"><span class="ng-val" id="nv-prot">${r1(nv.eiwitten_g||0)}g</span><span class="ng-lbl">Eiwitten</span></div>
+      <div class="ng-box"><span class="ng-val" id="nv-kh">${r1(nv.koolhydraten_g||0)}g</span><span class="ng-lbl">Koolhyd.</span></div>
+      <div class="ng-box"><span class="ng-val" id="nv-vet">${r1(nv.vetten_g||0)}g</span><span class="ng-lbl">Vetten</span></div>
+      <div class="ng-box"><span class="ng-val" id="nv-vez">${r1(nv.vezels_g||0)}g</span><span class="ng-lbl">Vezels</span></div>
+      <div class="ng-box"><span class="ng-val" id="nv-sui">${r1(nv.suiker_g||0)}g</span><span class="ng-lbl">Suiker</span></div>
+      <div class="ng-box"><span class="ng-val" id="nv-zout">${r1(nv.zout_g||0)}g</span><span class="ng-lbl">Zout</span></div>
     </div>
     <div class="macro-bars">
       <div class="mb-row"><span class="mb-lbl">🥩 Eiwitten</span><div class="mb-track"><div class="mb-fill" style="width:${pP}%;background:#a8e063"></div></div><span class="mb-pct">${pP}%</span></div>
@@ -812,11 +816,18 @@ function renderRecipe(r,portions){
 function changePortion(d){if(!currentRecipe)return;currentPortions=Math.max(1,Math.min(10,currentPortions+d));document.getElementById('port-num').textContent=currentPortions;const sl=document.getElementById('port-slider');if(sl)sl.value=currentPortions;updateNutritionDisplay();}
 function sliderChange(v){currentPortions=parseInt(v);document.getElementById('port-num').textContent=currentPortions;updateNutritionDisplay();}
 function updateNutritionDisplay(){
-  const nv=currentRecipe?.voedingswaarden_per_portie||{};const sc=currentPortions/(basePortions||2);
+  const nv=currentRecipe?.voedingswaarden_per_portie||{};
   const u=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  u('nv-kcal',Math.round((nv.kcal||0)*sc));u('nv-prot',r1((nv.eiwitten_g||0)*sc)+'g');
-  u('nv-kh',r1((nv.koolhydraten_g||0)*sc)+'g');u('nv-vet',r1((nv.vetten_g||0)*sc)+'g');
-  u('nv-vez',r1((nv.vezels_g||0)*sc)+'g');u('nv-sui',r1((nv.suiker_g||0)*sc)+'g');u('nv-zout',r1((nv.zout_g||0)*sc)+'g');
+  u('nv-kcal',Math.round(nv.kcal||0));
+  u('nv-prot',r1(nv.eiwitten_g||0)+'g');
+  u('nv-kh',r1(nv.koolhydraten_g||0)+'g');
+  u('nv-vet',r1(nv.vetten_g||0)+'g');
+  u('nv-vez',r1(nv.vezels_g||0)+'g');
+  u('nv-sui',r1(nv.suiker_g||0)+'g');
+  u('nv-zout',r1(nv.zout_g||0)+'g');
+  // Update total kcal line
+  const tot=document.getElementById('nv-kcal-total');
+  if(tot)tot.textContent='Totaal '+currentPortions+' porties: '+Math.round((nv.kcal||0)*currentPortions)+' kcal';
 }
 
 // ════════════════════════════
