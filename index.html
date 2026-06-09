@@ -221,6 +221,58 @@ textarea::placeholder{color:var(--text3);}
   body{align-items:center;}
   #app,body{width:100%;}
 }
+
+/* ── CATEGORIES + FAVOURITES ── */
+.cat-modal-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+.cat-chip-sel{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:99px;padding:8px 14px;font-size:.82rem;
+  color:var(--text2);cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;gap:5px;white-space:nowrap;
+}
+.cat-chip-sel.active{background:rgba(168,224,99,.12);border-color:rgba(168,224,99,.35);color:var(--accent);}
+.cat-chip-sel:active{transform:scale(.96);}
+
+.fav-toggle{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--rm);padding:14px 16px;margin-bottom:16px;
+  cursor:pointer;transition:border-color .2s;
+}
+.fav-toggle.active{border-color:rgba(255,80,80,.35);background:rgba(255,80,80,.06);}
+.fav-heart{font-size:1.5rem;transition:transform .2s;}
+.fav-toggle.active .fav-heart{transform:scale(1.15);}
+.fav-label{font-size:.9rem;color:var(--text2);flex:1;}
+.fav-toggle.active .fav-label{color:#ff6b6b;}
+
+/* category filter bar in book */
+.cat-filter-bar{display:flex;gap:7px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;scrollbar-width:none;}
+.cat-filter-bar::-webkit-scrollbar{display:none;}
+.cat-filter-pill{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:99px;padding:7px 14px;font-size:.78rem;
+  color:var(--text2);cursor:pointer;white-space:nowrap;
+  transition:background .15s,color .15s,border-color .15s;flex-shrink:0;
+}
+.cat-filter-pill.active{background:rgba(168,224,99,.12);color:var(--accent);border-color:rgba(168,224,99,.3);}
+.cat-filter-pill.fav-pill.active{background:rgba(255,107,107,.1);color:#ff6b6b;border-color:rgba(255,107,107,.3);}
+
+/* category badges on book cards */
+.book-cat-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px;}
+.book-cat-badge{
+  background:var(--surface2);border-radius:99px;
+  padding:3px 9px;font-size:.69rem;color:var(--text3);
+  display:flex;align-items:center;gap:3px;
+}
+.book-cat-badge.fav{background:rgba(255,107,107,.1);color:#ff6b6b;}
+
+/* heart on recipe view */
+.heart-btn{
+  background:none;border:none;font-size:1.6rem;cursor:pointer;
+  transition:transform .2s;padding:0;line-height:1;
+}
+.heart-btn:active{transform:scale(1.3);}
+
 </style>
 </head>
 <body>
@@ -328,7 +380,7 @@ textarea::placeholder{color:var(--text3);}
 <div id="screen-recipe" class="screen">
   <div id="recipe-content"></div>
   <div style="display:flex;gap:8px;margin-bottom:8px;">
-    <button class="btn btn-green" style="flex:1;" onclick="saveToBook()" id="btn-save">📖 Voeg toe aan receptenboek</button>
+    <button class="btn btn-green" style="flex:1;" onclick="openSaveModal()" id="btn-save">📖 Voeg toe aan receptenboek</button>
   </div>
   <button class="btn btn-outline" onclick="showScreen('home')" id="btn-new">+ Nieuw recept</button>
 </div>
@@ -350,6 +402,7 @@ textarea::placeholder{color:var(--text3);}
     <button class="sort-btn" onclick="setSort('kcal')" id="sort-kcal">🔥 Kcal</button>
     <button class="sort-btn" onclick="setSort('naam')" id="sort-naam">🔤 Naam</button>
   </div>
+  <div class="cat-filter-bar" id="cat-filter-bar"></div>
   <div id="book-list"></div>
 </div>
 
@@ -392,6 +445,34 @@ textarea::placeholder{color:var(--text3);}
 </div>
 
 </div><!-- #app -->
+
+
+<!-- SAVE MODAL -->
+<div class="modal-overlay hidden" id="save-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="save-modal-title">Recept opslaan</div>
+
+    <!-- Favourite toggle -->
+    <div class="fav-toggle" id="fav-toggle" onclick="toggleFavModal()">
+      <span class="fav-heart" id="fav-heart">🤍</span>
+      <span class="fav-label" id="fav-label">Toevoegen aan favorieten</span>
+    </div>
+
+    <!-- Category picker -->
+    <div class="section-lbl" style="margin-bottom:10px;">Categorie(ën)</div>
+    <div class="cat-modal-grid" id="cat-modal-grid"></div>
+
+    <!-- Custom category -->
+    <input type="text" id="custom-cat-input" placeholder="+ Eigen categorie toevoegen..." 
+      style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rm);padding:11px 14px;font-family:'Outfit',sans-serif;font-size:.85rem;color:var(--text);outline:none;margin-bottom:16px;"
+      onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+      onkeydown="handleCustomCat(event)">
+
+    <button class="btn btn-green" onclick="confirmSave()">📖 Opslaan in receptenboek</button>
+    <button class="btn btn-ghost" onclick="closeSaveModal()">Annuleer</button>
+  </div>
+</div>
 
 <!-- SCORE MODAL -->
 <div class="modal-overlay hidden" id="score-modal">
@@ -571,7 +652,7 @@ function showScreen(name){
   const el=document.getElementById('screen-'+name);if(el)el.classList.add('active');
   const nav=document.getElementById('nav-'+name);if(nav)nav.classList.add('active');
   document.getElementById('app').scrollTop=0;
-  if(name==='book'){renderBookFilters();renderBook();}
+  if(name==='book'){renderBookFilters();renderCatFilterBar();renderBook();}
   if(name==='recipe')document.getElementById('nav-recipe').style.display='flex';
   else document.getElementById('nav-recipe').style.display='none';
 }
@@ -768,6 +849,7 @@ function renderRecipe(r,portions){
       ${score?`<div class="chip amber">⭐ ${score}/10</div>`:''}
     </div>
   </div>
+  <div id="recipe-fav-row" style="display:flex;justify-content:flex-end;margin-bottom:6px;"></div>
   <div class="share-row">
     <button class="share-btn btn-wa" onclick="shareWhatsApp()"><svg width="17" height="17" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WhatsApp</button>
     <button class="share-btn btn-copy" onclick="copyRecipe()" id="copy-btn">📋 Kopieer</button>
@@ -814,6 +896,8 @@ function renderRecipe(r,portions){
     ${r.gezondheid_tips.map(tip=>`<div class="step-row"><div class="step-num" style="background:rgba(168,224,99,.08);color:var(--accent2)">✓</div><div class="step-desc">${tip}</div></div>`).join('')}
   </div>`:''}
   `;
+  // Render fav heart button
+  renderRecipeFavBtn();
 }
 function changePortion(d){if(!currentRecipe)return;currentPortions=Math.max(1,Math.min(10,currentPortions+d));document.getElementById('port-num').textContent=currentPortions;const sl=document.getElementById('port-slider');if(sl)sl.value=currentPortions;updateNutritionDisplay();}
 function sliderChange(v){currentPortions=parseInt(v);document.getElementById('port-num').textContent=currentPortions;updateNutritionDisplay();}
@@ -956,6 +1040,9 @@ function renderBook(){
     const ings=(r.ingredienten||[]).map(i=>(i.naam||'').toLowerCase());
     return [...activeFilters].every(f=>ings.some(i=>i.includes(f)));
   });}
+  // category / favourite filter
+  if(activeCatFilter==='fav') book=book.filter(r=>r.favourite);
+  else if(activeCatFilter) book=book.filter(r=>(r.categories||[]).includes(activeCatFilter));
   renderBookStats(book.length,getBook().length);
   // sort
   book=[...book];
@@ -994,6 +1081,13 @@ function renderBook(){
         ${allIngs.map(n=>{const m=matchedIngs.some(mi=>mi.naam===n||(n&&mi.naam&&n.toLowerCase()===mi.naam.toLowerCase()));return`<div class="book-ing-tag${m?' match':''}">${n}</div>`;}).join('')}
         ${(r.ingredienten||[]).length>6?`<div class="book-ing-tag">+${(r.ingredienten||[]).length-6}</div>`:''}
       </div>
+      <div class="book-cat-badges">
+        ${r.favourite?'<div class="book-cat-badge fav">❤️ Favoriet</div>':''}
+        ${(r.categories||[]).map(c=>{
+          const def=CATEGORIES.find(x=>x.id===c);
+          return '<div class="book-cat-badge">'+(def?def.label:'🏷️ '+c)+'</div>';
+        }).join('')}
+      </div>
       <div style="display:flex;gap:7px;margin-top:10px;">
         <button class="btn btn-sm btn-green" style="flex:2;" onclick="openFromBook(${origIdx})">📖 ${t('openBtn')}</button>
         <button class="btn btn-sm btn-outline" style="flex:1;margin-top:0;" onclick="openScoreModal(${origIdx})">⭐ ${t('rateBtn')}</button>
@@ -1015,6 +1109,7 @@ function openFromBook(idx){
   basePortions=typeof currentRecipe.porties==='number'?currentRecipe.porties:2;
   currentPortions=basePortions;
   renderRecipe(currentRecipe,currentPortions);
+  renderRecipeFavBtn();
   showScreen('recipe');
 }
 
@@ -1054,6 +1149,7 @@ function confirmScore(){
 }
 // close modal on backdrop click
 document.getElementById('score-modal').addEventListener('click',function(e){if(e.target===this)closeScoreModal();});
+document.getElementById('save-modal').addEventListener('click',function(e){if(e.target===this)closeSaveModal();});
 
 // ════════════════════════════
 //  FALLBACK
@@ -1110,6 +1206,198 @@ function checkApiKeyOnStart(){
     banner.onclick=()=>showScreen('settings');
     document.getElementById('screen-home')?.prepend(banner);
   }
+}
+
+
+// ════════════════════════════
+//  CATEGORIES + FAVOURITES
+// ════════════════════════════
+const CATEGORIES = [
+  {id:'pasta',   label:'🍝 Pasta'},
+  {id:'vlees',   label:'🥩 Vlees'},
+  {id:'vis',     label:'🐟 Vis'},
+  {id:'salade',  label:'🥗 Salade'},
+  {id:'soep',    label:'🍲 Soep'},
+  {id:'vegi',    label:'🌱 Vegetarisch'},
+  {id:'vegan',   label:'🌿 Vegan'},
+  {id:'aziatisch',label:'🍱 Aziatisch'},
+  {id:'stoofpot',label:'🫕 Stoofpot'},
+  {id:'ontbijt', label:'🥚 Ontbijt'},
+  {id:'pizza',   label:'🍕 Pizza'},
+  {id:'eenpans', label:'🥘 Eenpansgerecht'},
+  {id:'snel',    label:'⚡ Snel klaar'},
+  {id:'feest',   label:'🎉 Feestelijk'},
+];
+
+let modalSelectedCats = [];
+let modalIsFav = false;
+let activeCatFilter = null; // null = all, 'fav' = favs, else category id
+
+function openSaveModal(){
+  if(!currentRecipe) return;
+  // Pre-fill from existing saved version if any
+  const book = getBook();
+  const existing = book.find(r => r.naam === currentRecipe.naam);
+  modalSelectedCats = existing?.categories ? [...existing.categories] : suggestCategories(currentRecipe);
+  modalIsFav = existing?.favourite || false;
+
+  document.getElementById('save-modal-title').textContent = currentRecipe.naam;
+  document.getElementById('custom-cat-input').value = '';
+  renderCatModalGrid();
+  updateFavToggle();
+  document.getElementById('save-modal').classList.remove('hidden');
+}
+
+function closeSaveModal(){
+  document.getElementById('save-modal').classList.add('hidden');
+}
+
+function suggestCategories(recipe){
+  // Auto-suggest based on recipe name + ingredients
+  const text = (recipe.naam + ' ' + (recipe.beschrijving||'') + ' ' + 
+    (recipe.ingredienten||[]).map(i=>i.naam).join(' ')).toLowerCase();
+  const suggestions = [];
+  if(/pasta|rigatoni|spaghetti|penne|tagliatelle|lasagne/.test(text)) suggestions.push('pasta');
+  if(/kip|rund|varken|lam|gehakt|spek|worst/.test(text)) suggestions.push('vlees');
+  if(/zalm|tonijn|garnaal|vis|seafood|zeevruchten/.test(text)) suggestions.push('vis');
+  if(/sla|salade|rucola/.test(text)) suggestions.push('salade');
+  if(/soep|bouillon|bisque/.test(text)) suggestions.push('soep');
+  if(/tofu|tempe|seitan/.test(text)) suggestions.push('vegi');
+  if(/sushi|wok|noodle|ramen|curry|kimchi|pad thai/.test(text)) suggestions.push('aziatisch');
+  if(/stoofpot|stoof|smoor/.test(text)) suggestions.push('stoofpot');
+  if(/ontbijt|ei|pannenkoek|wafel/.test(text)) suggestions.push('ontbijt');
+  if(/pizza/.test(text)) suggestions.push('pizza');
+  if((recipe.bereidingstijd||'').match(/^[0-9]+/) && parseInt(recipe.bereidingstijd) <= 20) suggestions.push('snel');
+  return suggestions;
+}
+
+function renderCatModalGrid(){
+  // Get custom categories from book
+  const book = getBook();
+  const customCats = new Set();
+  book.forEach(r => (r.categories||[]).forEach(c => {
+    if(!CATEGORIES.find(x=>x.id===c)) customCats.add(c);
+  }));
+  const allCats = [...CATEGORIES, ...[...customCats].map(c=>({id:c,label:'🏷️ '+c}))];
+
+  document.getElementById('cat-modal-grid').innerHTML = allCats.map(cat=>`
+    <div class="cat-chip-sel ${modalSelectedCats.includes(cat.id)?'active':''}" 
+         onclick="toggleCatModal('${cat.id}')">
+      ${cat.label}
+    </div>`).join('');
+}
+
+function toggleCatModal(id){
+  if(modalSelectedCats.includes(id)) modalSelectedCats = modalSelectedCats.filter(c=>c!==id);
+  else modalSelectedCats.push(id);
+  renderCatModalGrid();
+}
+
+function handleCustomCat(e){
+  if(e.key==='Enter'){
+    const val = e.target.value.trim();
+    if(val && !modalSelectedCats.includes(val)){
+      modalSelectedCats.push(val);
+      e.target.value='';
+      renderCatModalGrid();
+    }
+  }
+}
+
+function toggleFavModal(){
+  modalIsFav = !modalIsFav;
+  updateFavToggle();
+}
+
+function updateFavToggle(){
+  const tog = document.getElementById('fav-toggle');
+  const heart = document.getElementById('fav-heart');
+  const lbl = document.getElementById('fav-label');
+  if(modalIsFav){
+    tog.classList.add('active');
+    heart.textContent = '❤️';
+    lbl.textContent = 'Toegevoegd aan favorieten';
+  } else {
+    tog.classList.remove('active');
+    heart.textContent = '🤍';
+    lbl.textContent = 'Toevoegen aan favorieten';
+  }
+}
+
+function confirmSave(){
+  if(!currentRecipe) return;
+  const book = getBook();
+  const existsIdx = book.findIndex(r => r.naam === currentRecipe.naam);
+  const entry = {
+    ...currentRecipe,
+    datum: new Date().toLocaleDateString('nl-BE'),
+    datumSort: existsIdx >= 0 ? book[existsIdx].datumSort : Date.now(),
+    lang,
+    score: existsIdx >= 0 ? book[existsIdx].score : null,
+    categories: modalSelectedCats,
+    favourite: modalIsFav,
+  };
+  if(existsIdx >= 0) book[existsIdx] = entry;
+  else book.unshift(entry);
+  setBook(book);
+  currentRecipe = entry;
+
+  // Update heart on recipe view
+  renderRecipeFavBtn();
+
+  closeSaveModal();
+  const btn = document.getElementById('btn-save');
+  if(btn){btn.textContent='✅ Opgeslagen!';setTimeout(()=>btn.textContent='📖 Voeg toe aan receptenboek',2000);}
+}
+
+// Heart button on recipe view
+function renderRecipeFavBtn(){
+  const row = document.getElementById('recipe-fav-row');
+  if(!row || !currentRecipe) return;
+  const isFav = currentRecipe.favourite || false;
+  row.innerHTML = `<button class="heart-btn" onclick="toggleFavDirect()" title="${isFav?'Verwijder uit favorieten':'Voeg toe aan favorieten'}">${isFav?'❤️':'🤍'}</button>`;
+}
+
+function toggleFavDirect(){
+  if(!currentRecipe) return;
+  const book = getBook();
+  const idx = book.findIndex(r => r.naam === currentRecipe.naam && r.datumSort === currentRecipe.datumSort);
+  if(idx < 0){ openSaveModal(); return; } // not saved yet, open modal
+  book[idx].favourite = !book[idx].favourite;
+  currentRecipe.favourite = book[idx].favourite;
+  setBook(book);
+  renderRecipeFavBtn();
+}
+
+// ── CATEGORY FILTER BAR IN BOOK ──
+function renderCatFilterBar(){
+  const book = getBook();
+  if(!book.length){ document.getElementById('cat-filter-bar').innerHTML=''; return; }
+
+  // Collect all used categories
+  const usedCats = new Set();
+  let hasFav = false;
+  book.forEach(r => {
+    (r.categories||[]).forEach(c => usedCats.add(c));
+    if(r.favourite) hasFav = true;
+  });
+
+  const allCatDefs = [...CATEGORIES, ...[...usedCats].filter(c=>!CATEGORIES.find(x=>x.id===c)).map(c=>({id:c,label:'🏷️ '+c}))];
+  const visibleCats = allCatDefs.filter(c => usedCats.has(c.id));
+
+  let html = `<div class="cat-filter-pill ${!activeCatFilter?'active':''}" onclick="setCatFilter(null)">Alles</div>`;
+  if(hasFav) html += `<div class="cat-filter-pill fav-pill ${activeCatFilter==='fav'?'active':''}" onclick="setCatFilter('fav')">❤️ Favorieten</div>`;
+  visibleCats.forEach(cat => {
+    html += `<div class="cat-filter-pill ${activeCatFilter===cat.id?'active':''}" onclick="setCatFilter('${cat.id}')">${cat.label}</div>`;
+  });
+
+  document.getElementById('cat-filter-bar').innerHTML = html;
+}
+
+function setCatFilter(val){
+  activeCatFilter = val;
+  renderCatFilterBar();
+  renderBook();
 }
 
 // ════════════════════════════
